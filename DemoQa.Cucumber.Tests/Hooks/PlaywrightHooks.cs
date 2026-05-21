@@ -1,47 +1,34 @@
 using Microsoft.Playwright;
 using Reqnroll;
-using DemoQa.Cucumber.Tests.Support;
+using Reqnroll.BoDi;
 
 namespace DemoQa.Cucumber.Tests.Hooks;
 
 [Binding]
-public sealed class PlaywrightHooks
+public class PlaywrightHooks
 {
-    private readonly ScenarioContext _scenarioContext;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
     private IBrowserContext? _context;
 
-    public PlaywrightHooks(ScenarioContext scenarioContext)
-    {
-        _scenarioContext = scenarioContext;
-    }
-
     [BeforeScenario]
-    public async Task BeforeScenarioAsync()
+    public async Task BeforeScenario(IObjectContainer container)
     {
         _playwright = await Playwright.CreateAsync();
 
         _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = TestSettings.Headless
+            Headless = true
         });
 
-        _context = await _browser.NewContextAsync(new BrowserNewContextOptions
-        {
-            ViewportSize = new ViewportSize
-            {
-                Width = 1280,
-                Height = 720
-            }
-        });
-
+        _context = await _browser.NewContextAsync();
         var page = await _context.NewPageAsync();
-        _scenarioContext["Page"] = page;
+
+        container.RegisterInstanceAs<IPage>(page);
     }
 
     [AfterScenario]
-    public async Task AfterScenarioAsync()
+    public async Task AfterScenario()
     {
         if (_context is not null)
         {

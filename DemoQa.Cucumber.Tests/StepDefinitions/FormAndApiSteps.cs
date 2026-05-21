@@ -1,75 +1,67 @@
-using System.Net;
-using System.Net.Http.Json;
+using DemoQa.Cucumber.Tests.Models;
 using FluentAssertions;
 using Microsoft.Playwright;
 using Reqnroll;
-using DemoQa.Cucumber.Tests.Models;
-using DemoQa.Cucumber.Tests.Pages;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace DemoQa.Cucumber.Tests.StepDefinitions;
 
 [Binding]
-public sealed class FormAndApiSteps
+public class FormAndApiSteps
 {
-    private readonly TextBoxPage _textBoxPage;
-    private readonly HttpClient _httpClient;
-    private HttpResponseMessage? _response;
+    private readonly IPage _page;
+    private readonly HttpClient _httpClient = new();
     private PostResponse? _postResponse;
 
-    private readonly FormData _formData = new(
-        "John Doe",
-        "john.doe@example.com",
-        "123 Main St",
-        "456 Secondary St");
-
-    public FormAndApiSteps(ScenarioContext scenarioContext)
+    [Obsolete("Required by Reqnroll")]
+    public FormAndApiSteps(IPage page)
     {
-        var page = scenarioContext.Get<IPage>("Page");
-        _textBoxPage = new TextBoxPage(page);
-        _httpClient = new HttpClient();
+        _page = page;
     }
 
     [Given("I open the DemoQA text box page")]
-    public async Task OpenDemoQaTextBoxPageAsync()
+    public async Task GivenIOpenTheDemoQATextBoxPage()
     {
-        await _textBoxPage.OpenAsync();
+        await _page.GotoAsync("https://demoqa.com/text-box");
     }
 
     [When("I submit the text box form with valid data")]
-    public async Task SubmitTextBoxFormWithValidDataAsync()
+    public async Task WhenISubmitTheTextBoxFormWithValidData()
     {
-        await _textBoxPage.SubmitFormAsync(_formData);
+        await _page.Locator("#userName").FillAsync("John Doe");
+        await _page.Locator("#userEmail").FillAsync("john.doe@example.com");
+        await _page.Locator("#currentAddress").FillAsync("123 Main St");
+        await _page.Locator("#permanentAddress").FillAsync("456 Secondary St");
+        await _page.Locator("#submit").ClickAsync();
     }
 
     [Then("the submitted form values should be displayed correctly")]
-    public async Task SubmittedFormValuesShouldBeDisplayedCorrectlyAsync()
+    public async Task ThenTheSubmittedFormValuesShouldBeDisplayedCorrectly()
     {
-        await _textBoxPage.WaitForOutputAsync();
+        await _page.Locator("#output").WaitForAsync();
 
-        var outputName = await _textBoxPage.GetOutputNameAsync();
-        var outputEmail = await _textBoxPage.GetOutputEmailAsync();
-        var outputCurrentAddress = await _textBoxPage.GetOutputCurrentAddressAsync();
-        var outputPermanentAddress = await _textBoxPage.GetOutputPermanentAddressAsync();
+        var output = await _page.Locator("#output").InnerTextAsync();
 
-        outputName.Should().Contain(_formData.FullName, "the output name should match the submitted full name");
-        outputEmail.Should().Contain(_formData.Email, "the output email should match the submitted email");
-        outputCurrentAddress.Should().Contain(_formData.CurrentAddress, "the output current address should match the submitted current address");
-        outputPermanentAddress.Should().Contain(_formData.PermanentAddress, "the output permanent address should match the submitted permanent address");
+        output.Should().Contain("John Doe");
+        output.Should().Contain("john.doe@example.com");
+        output.Should().Contain("123 Main St");
+        output.Should().Contain("456 Secondary St");
     }
 
     [When("I request post 1 from the public API")]
-    public async Task RequestPostOneFromThePublicApiAsync()
+    public async Task WhenIRequestPost1FromThePublicApi()
     {
-        _response = await _httpClient.GetAsync("https://jsonplaceholder.typicode.com/posts/1");
-        _postResponse = await _response.Content.ReadFromJsonAsync<PostResponse>();
+        var response = await _httpClient.GetAsync("https://jsonplaceholder.typicode.com/posts/1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        _postResponse = await response.Content.ReadFromJsonAsync<PostResponse>();
     }
 
     [Then("the API response should be valid")]
-    public void ApiResponseShouldBeValid()
+    public void ThenTheApiResponseShouldBeValid()
     {
-        _response.Should().NotBeNull();
-        _response!.StatusCode.Should().Be(HttpStatusCode.OK);
-
         _postResponse.Should().NotBeNull();
         _postResponse!.UserId.Should().BeGreaterThan(0);
         _postResponse.Id.Should().Be(1);
@@ -78,7 +70,7 @@ public sealed class FormAndApiSteps
     }
 
     [Then("I print the success message")]
-    public void PrintTheSuccessMessage()
+    public void ThenIPrintTheSuccessMessage()
     {
         Console.WriteLine("All tests passed.");
     }
