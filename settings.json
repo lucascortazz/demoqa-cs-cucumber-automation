@@ -1,0 +1,8 @@
+{
+  "cucumber.features": [
+    "DemoQa.Cucumber.Tests/Features/**/*.feature"
+  ],
+  "cucumber.glue": [
+    "DemoQa.Cucumber.Tests/StepDefinitions/**/*.cs"
+  ]
+}
